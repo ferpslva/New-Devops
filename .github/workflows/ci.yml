@@ -14,71 +14,55 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: rootpass
-          MYSQL_DATABASE: sistema_av_iii
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testdb
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -prootpass"
+          --health-cmd="mysqladmin ping -h localhost"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=5
+          --health-retries=10
 
     steps:
-      - name: 📥 Clonar código
+      - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: ⚙️ Instalar PHP e extensões
+      - name: Instalar PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo_mysql
 
-      - name: 🧩 Instalar dependências com Composer
-        run: composer install --no-interaction --prefer-dist
-
-      - name: 🕒 Aguardar MySQL inicializar
-        run: sleep 15
-
-      - name: 🧪 Testar conexão com banco
-        env:
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: sistema_av_iii
-          DB_USERNAME: root
-          DB_PASSWORD: rootpass
+      - name: Instalar dependências (se existir composer.json)
         run: |
-          php -r "
-          try {
-            \$pdo = new PDO('mysql:host=127.0.0.1;port=3306;dbname=sistema_av_iii', 'root', 'rootpass');
-            echo '✅ Conexão MySQL funcionando\n';
-          } catch (Exception \$e) {
-            echo '❌ Erro MySQL: ' . \$e->getMessage() . '\n';
-            exit(1);
-          }"
-
-      - name: Aguarda o MySQL iniciar
-        run: |
-          for i in {1..10}; do
-          if mysqladmin ping -h "mysql" --silent; then
-          echo "MySQL está pronto!"
-          break
+          if [ -f "composer.json" ]; then
+            composer install
+          else
+            echo "Nenhum composer.json encontrado, pulando instalação."
           fi
-          echo "Aguardando MySQL iniciar..."
-          sleep 5
+
+      - name: Esperar MySQL iniciar
+        run: |
+          echo "Aguardando o MySQL ficar pronto..."
+          for i in {1..15}; do
+            if mysqladmin ping -h"127.0.0.1" --silent; then
+              echo "✅ MySQL está pronto!"
+              break
+            fi
+            echo "⏳ Tentando novamente ($i/15)..."
+            sleep 5
           done
 
-      - name: Testa conexão com o banco
+      - name: Testar conexão PHP → MySQL
         run: |
           echo '<?php
           try {
-          $pdo = new PDO("mysql:host=mysql;dbname=testdb", "root", "root");
-          echo "Conexao bem-sucedida!";
+              $pdo = new PDO("mysql:host=127.0.0.1;dbname=testdb", "root", "root");
+              echo \"✅ Conexao bem-sucedida!\";
           } catch (PDOException $e) {
-          echo "Erro: " . $e->getMessage();
-          exit(1);
+              echo \"❌ Erro: \" . $e->getMessage();
+              exit(1);
           }
           ?>' > test_db.php
           php test_db.php
-
 
