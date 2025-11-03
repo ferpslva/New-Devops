@@ -1,0 +1,43 @@
+services:
+  
+  # 1. Serviço da Aplicação (PHP)
+  app:
+    build: . # Constrói a partir do Dockerfile na pasta atual
+    container_name: mvc_app_php
+    volumes:
+      - ./:/var/www/html # Sincroniza seu código local com o contêiner
+    # Variáveis de ambiente que vamos usar no PHP
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=sistema_av_iii
+      - DB_USERNAME=root
+      - DB_PASSWORD=rootpass # Senha forte é recomendada
+
+  # 2. Serviço do Servidor Web (Nginx)
+  web:
+    image: nginx:alpine # Imagem leve do Nginx
+    container_name: mvc_app_web
+    ports:
+      - "8080:80" # Expõe o site em: http://localhost:8080
+    volumes:
+      - ./:/var/www/html # Sincroniza o código
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf # Carrega nossa config do Nginx
+    depends_on:
+      - app # Só inicia depois que o serviço 'app' estiver pronto
+
+  # 3. Serviço do Banco de Dados (MySQL)
+  db:
+    image: mysql:8.0 # Imagem oficial do MySQL
+    container_name: mvc_app_db
+    ports:
+      - "3307:3306" # Expõe o banco na porta 3307 (para você acessar do seu PC)
+    environment:
+      MYSQL_DATABASE: sistema_av_iii
+      MYSQL_ROOT_PASSWORD: rootpass # Deve ser a MESMA senha do 'app'
+    volumes:
+      - db_data:/var/lib/mysql # Persiste os dados do banco
+
+# Volume nomeado para persistir os dados do banco
+volumes:
+  db_data:
