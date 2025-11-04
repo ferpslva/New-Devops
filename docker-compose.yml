@@ -37,6 +37,7 @@ services:
       MYSQL_ROOT_PASSWORD: rootpass # Deve ser a MESMA senha do 'app'
     volumes:
       - db_data:/var/lib/mysql # Persiste os dados do banco
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql # Inicializa o schema automaticamente
 
 # Volume nomeado para persistir os dados do banco
 volumes:

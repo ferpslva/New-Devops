@@ -26,4 +26,5 @@ COPY . .
 
 # 8. Permissões
 # O usuário 'www-data' é o usuário que o Nginx/PHP-FPM usam
-RUN chown -R www-data:www-data /var/www/html
+RUN chown -R www-data:www-data /var/www/html && \
+    chmod -R 755 /var/www/html

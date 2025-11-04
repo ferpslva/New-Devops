@@ -1,6 +1,5 @@
 RewriteEngine On
-RewriteBase /phpfaculdade/aula_php/aula7/
 
-# envia tudo pro index.php, exceto arquivos reais
+# Envia tudo pro index.php, exceto arquivos reais
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ index.php [QSA,L]

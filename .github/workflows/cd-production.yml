@@ -23,10 +23,17 @@ jobs:
         chmod 600 ~/.ssh/deploy_key
         ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
-    - name: 📋 Copy docker-compose to VPS
+    - name: 📋 Sync project files to VPS
       run: |
-        scp -i ~/.ssh/deploy_key docker-compose.yml \
-          ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/opt/sistema_av_iii/
+        # Criar diretório temporário excluindo arquivos desnecessários
+        rsync -avz --delete \
+          --exclude='.git' \
+          --exclude='node_modules' \
+          --exclude='vendor' \
+          --exclude='backups' \
+          --exclude='.env' \
+          -e "ssh -i ~/.ssh/deploy_key" \
+          ./ ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/opt/sistema_av_iii/
 
     - name: 🗄️ Backup MySQL Database
       run: |
