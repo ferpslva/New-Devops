@@ -24,5 +24,3 @@ Subir MySQL	Cria um banco de dados de teste temporário
 Rodar Composer	Instala dependências lá no ambiente (você não precisa instalar nada local)
 Testar conexão	Testa se o PHP consegue conectar no MySQL
 Rodar teste simples	Executa um pequeno teste de PHP pra confirmar que o workflow funciona
-
-PRECISAMOS EDITAR AQUI
