@@ -7,8 +7,11 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to VPS
+    name: Deploy to VPS Production
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
     - name: 📥 Checkout code
@@ -24,28 +27,26 @@ jobs:
     - name: 📋 Copy docker-compose to VPS
       run: |
         scp -i ~/.ssh/deploy_key docker-compose.yml \
-        ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/opt/sistema_av_iii/
+          ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/opt/sistema_av_iii/
 
     - name: 🗄️ Backup MySQL Database
       run: |
         ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'EOF'
           cd /opt/sistema_av_iii
-
           mkdir -p backups
-          if docker ps | grep -q db; then
+          if docker ps | grep -q mvc_app_db; then
             echo "📦 Creating database backup..."
             BACKUP_FILE="backups/backup_$(date +%Y%m%d_%H%M%S).sql"
-            docker-compose exec -T db mysqldump -u root -prootpass sistema_av_iii > $BACKUP_FILE
+            docker-compose exec -T db mysqldump -uroot -prootpass sistema_av_iii > $BACKUP_FILE
             echo "✅ Backup created: $BACKUP_FILE"
-            
-            # Keep only last 7 backups
+            # Keep last 7 backups
             ls -t backups/backup_*.sql | tail -n +8 | xargs -r rm
           else
-            echo "ℹ️ No running DB container to backup"
+            echo "ℹ️ Database container not running, skipping backup"
           fi
         EOF
 
-    - name: 🔄 Deploy application
+    - name: 🔨 Build and deploy containers
       run: |
         ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'EOF'
           cd /opt/sistema_av_iii
@@ -54,18 +55,22 @@ jobs:
           docker-compose down --remove-orphans
 
           echo "🔄 Building and starting new containers..."
-          docker-compose up -d --build
+          docker-compose up -d --build --force-recreate
 
-          echo "✅ Containers started"
+          echo "⏳ Waiting 15 seconds for containers to initialize..."
+          sleep 15
+
+          # Check if app container is running
+          if ! docker ps | grep -q mvc_app_php; then
+            echo "❌ Container da aplicação não iniciou!"
+            docker-compose logs app
+            exit 1
+          fi
 
           echo "🔄 Running database migrations..."
-          # Ajuste o comando se for outro tipo de aplicação
           docker-compose exec -T app php artisan migrate || true
 
-          echo "✅ Migrations completed"
-
           echo "🏥 Health check..."
-          sleep 10
           MAX_RETRIES=10
           RETRY_COUNT=0
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
@@ -77,12 +82,13 @@ jobs:
             echo "⏳ Health check attempt $RETRY_COUNT/$MAX_RETRIES failed, retrying in 5s..."
             sleep 5
           done
+
           echo "❌ Health check failed!"
           docker-compose logs app
           exit 1
         EOF
 
-    - name: 🧹 Cleanup SSH
+    - name: 🧹 Cleanup SSH key
       if: always()
       run: rm -f ~/.ssh/deploy_key
 
@@ -102,4 +108,4 @@ jobs:
         echo "❌ =================================="
         echo "❌ DEPLOYMENT FAILED!"
         echo "❌ =================================="
-        echo "Check the logs above for details."
+        echo "Check the logs above for details and manually inspect the VPS if necessary."
