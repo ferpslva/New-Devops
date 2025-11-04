@@ -65,10 +65,7 @@ jobs:
           DB_DATABASE: testdb
           DB_USERNAME: root
           DB_PASSWORD: root
-        run: |
-          echo "🧪 Executando testes..."
-          vendor/bin/phpunit --colors=always --verbose
-          echo "✅ Todos os testes passaram!"
+        run: vendor/bin/phpunit
 
       - name: 🐳 Build Docker (validação)
         run: |
