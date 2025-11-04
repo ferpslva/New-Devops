@@ -42,9 +42,12 @@ jobs:
       - name: Instalar PHPUnit
         run: composer require --dev phpunit/phpunit ^10
 
+      - name: Esperar o MySQL iniciar
+        run: sleep 20
+
       - name: Criar tabela categoria
         env:
-          DB_HOST: mysql
+          DB_HOST: 127.0.0.1
           DB_DATABASE: testdb
           DB_USER: root
           DB_PASSWORD: root
@@ -58,7 +61,7 @@ jobs:
 
       - name: Rodar testes (PHPUnit)
         env:
-          DB_HOST: mysql
+          DB_HOST: 127.0.0.1
           DB_DATABASE: testdb
           DB_USER: root
           DB_PASSWORD: root
@@ -67,7 +70,7 @@ jobs:
       - name: ✅ CI Success
         if: success()
         run: echo "✅ All checks passed! Code is ready for merge."
-    
+
       - name: ❌ CI Failed
         if: failure()
         run: |
