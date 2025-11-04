@@ -1,13 +1,15 @@
-name: CI com MySQL
+name: CI - Testes e Validações
 
 on:
-  push:
-    branches: [ "master" ]
   pull_request:
-    branches: [ "master" ]
+    branches: 
+      - develop
+      - master
+  workflow_dispatch:
 
 jobs:
-  build-and-test:
+  tests-and-validation:
+    name: Testes e Build Docker
     runs-on: ubuntu-latest
 
     services:
@@ -25,55 +27,73 @@ jobs:
           --health-retries=3
 
     steps:
-      - name: Checkout do código
+      - name: 📥 Checkout do código
         uses: actions/checkout@v4
 
-      - name: Configurar PHP
+      - name: 🐘 Configurar PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
+          extensions: pdo, pdo_mysql
 
-      - name: Instalar dependências (Composer)
-        run: composer install --no-interaction --no-progress
+      - name: 📦 Instalar dependências (Composer)
+        run: |
+          composer install --no-interaction --no-progress
+          composer dump-autoload
 
-      - name: Gerar autoload
-        run: composer dump-autoload
-
-      - name: Instalar PHPUnit
+      - name: 🧪 Instalar PHPUnit
         run: composer require --dev phpunit/phpunit ^10
 
-      - name: Esperar o MySQL iniciar
+      - name: ⏳ Aguardar MySQL iniciar
         run: sleep 20
 
-      - name: Criar tabela categoria
+      - name: 🗄️ Criar schema do banco de dados
         env:
           DB_HOST: 127.0.0.1
+          DB_PORT: 3306
           DB_DATABASE: testdb
-          DB_USER: root
+          DB_USERNAME: root
           DB_PASSWORD: root
         run: |
-          mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD $DB_DATABASE -e "
-            CREATE TABLE IF NOT EXISTS categoria (
-              id INT AUTO_INCREMENT PRIMARY KEY,
-              nome VARCHAR(255) NOT NULL
-            );
-          "
+          mysql -h $DB_HOST -u$DB_USERNAME -p$DB_PASSWORD $DB_DATABASE < database/schema.sql
+          echo "✅ Schema criado com sucesso!"
 
-      - name: Rodar testes (PHPUnit)
+      - name: 🧪 Rodar testes (PHPUnit)
         env:
           DB_HOST: 127.0.0.1
+          DB_PORT: 3306
           DB_DATABASE: testdb
-          DB_USER: root
+          DB_USERNAME: root
           DB_PASSWORD: root
-        run: vendor/bin/phpunit
+        run: |
+          echo "🧪 Executando testes..."
+          vendor/bin/phpunit --colors=always --verbose
+          echo "✅ Todos os testes passaram!"
 
-      - name: ✅ CI Success
+      - name: 🐳 Build Docker (validação)
+        run: |
+          echo "🐳 Validando build da imagem Docker..."
+          docker build -t mvc-app-test:ci .
+          echo "✅ Imagem Docker construída com sucesso!"
+
+      - name: 📊 Relatório Final
         if: success()
-        run: echo "✅ All checks passed! Code is ready for merge."
+        run: |
+          echo "=================================="
+          echo "✅ CI PASSOU COM SUCESSO!"
+          echo "=================================="
+          echo "✓ Testes unitários e de integração: OK"
+          echo "✓ Build Docker: OK"
+          echo "✓ Schema SQL: OK"
+          echo ""
+          echo "Este PR está pronto para ser merged! 🚀"
 
-      - name: ❌ CI Failed
+      - name: ❌ CI Falhou
         if: failure()
         run: |
-          echo "❌ CI pipeline failed!"
-          echo "Please check the logs above for details."
+          echo "=================================="
+          echo "❌ CI FALHOU!"
+          echo "=================================="
+          echo "Por favor, verifique os logs acima e corrija os problemas."
+          echo "O merge está bloqueado até que todos os checks passem."
           exit 1

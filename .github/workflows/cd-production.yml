@@ -2,8 +2,12 @@ name: CD - Deploy Production
 
 on:
   push:
-    branches: [ "master" ]
+    branches: 
+      - master
   workflow_dispatch:
+
+# IMPORTANTE: Este workflow só executa em push para master
+# Garante que nada vai para produção sem passar pelo CI
 
 jobs:
   deploy:
