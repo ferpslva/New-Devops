@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # Dozzle - Interface web para visualizar logs dos containers em tempo real
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    ports:
+      - "9999:8080"
+    volumes:
+      # Acesso read-only ao Docker socket para ler logs dos containers
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # Configurações do Dozzle
+      DOZZLE_LEVEL: info
+      DOZZLE_TAILSIZE: 300
+      DOZZLE_FILTER: "status=running"
+      # Autenticação (opcional - descomente e configure)
+      # DOZZLE_USERNAME: admin
+      # DOZZLE_PASSWORD: changeme
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+    driver: bridge
+
+# Recursos limitados para não consumir muita RAM
+# Dozzle usará ~20-30MB de RAM
