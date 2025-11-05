@@ -29,14 +29,20 @@ jobs:
 
     - name: 📋 Sync project files to VPS
       run: |
-        # Criar diretório temporário excluindo arquivos desnecessários
-        rsync -avz --delete \
+        # Sync - apenas arquivos modificados
+        rsync -az --delete \
           --exclude='.git' \
+          --exclude='.github' \
           --exclude='node_modules' \
           --exclude='vendor' \
           --exclude='backups' \
           --exclude='.env' \
-          -e "ssh -i ~/.ssh/deploy_key" \
+          --exclude='*.log' \
+          --exclude='.DS_Store' \
+          --exclude='Thumbs.db' \
+          --checksum \
+          --compress-level=6 \
+          -e "ssh -i ~/.ssh/deploy_key -o Compression=no -o StrictHostKeyChecking=no" \
           ./ ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/opt/sistema_av_iii/
 
     - name: 🗄️ Backup MySQL Database
