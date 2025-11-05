@@ -67,6 +67,9 @@ jobs:
           echo "🔄 Building and starting all containers..."
           docker-compose up -d --build
 
+          echo "📊 Starting monitoring containers (Dozzle)..."
+          docker-compose -f docker-compose.monitoring.yml up -d
+
           echo "✅ Verifying containers are running..."
           docker-compose ps
           if ! docker-compose ps | grep "Up"; then
