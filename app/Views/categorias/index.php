@@ -1,36 +1,38 @@
 <?php require_once __DIR__ . '/../layout/header.php'; ?>
 
 <article>
-    <header style="display: flex; justify-content: space-between; align-items: center;">
-        <h2><?= htmlspecialchars($title ?? 'Categorias') ?></h2>
-        <a href="/categorias/criar" role="button">Criar a new Categoria</a>
-    </header>
+  <header class="grid">
+    <h2><?= htmlspecialchars($title ?? 'Categorias') ?></h2>
+    <a href="/categorias/criar" role="button">Nova Categoria</a>
+  </header>
 
+  <?php if (!empty($categorias)): ?>
     <ul>
-        <?php foreach($categorias as $item): ?>
-            <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                
-                <a href="/categorias/ver?id=<?= $item['id'] ?>">
-                    <?= htmlspecialchars($item['nome']) ?>
-                </a>
-                
-                <div role="group">
-                    <a href="/categorias/editar?id=<?= $item['id'] ?>" role="button" class="secondary outline">
-                        Editar
-                    </a>
+      <?php foreach ($categorias as $item): ?>
+        <li>
+          <article class="grid">
+            <div>
+              <a href="/categorias/ver?id=<?= $item['id'] ?>">
+                <strong><?= htmlspecialchars($item['nome']) ?></strong>
+              </a>
+            </div>
 
-                    <form 
-                        action="/api/categorias/deletar" 
-                        method="POST" 
-                        style="display: inline-block; margin-bottom: 0;">
-                        
-                        <input type="hidden" name="id" value="<?= $item['id'] ?>" />
-                        <button type="submit" class="contrast outline">Excluir</button>
-                    </form>
-                </div>
-            </li>
-        <?php endforeach; ?>
+            <div class="grid" style="justify-content: end; gap: 0.5rem;">
+              <a href="/categorias/editar?id=<?= $item['id'] ?>" role="button" class="secondary">
+                Editar
+              </a>
+              <form action="/api/categorias/deletar" method="POST">
+                <input type="hidden" name="id" value="<?= $item['id'] ?>">
+                <button type="submit" class="contrast">Excluir</button>
+              </form>
+            </div>
+          </article>
+        </li>
+      <?php endforeach; ?>
     </ul>
+  <?php else: ?>
+    <p><em>Nenhuma categoria cadastrada.</em></p>
+  <?php endif; ?>
 </article>
 
 <?php require_once __DIR__ . '/../layout/footer.php'; ?>
