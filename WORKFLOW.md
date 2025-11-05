@@ -18,19 +18,16 @@ O projeto usa um fluxo de CI/CD automatizado com duas branches principais:
 
 ```bash
 # Criar nova branch a partir de develop
-git checkout develop
-git pull origin develop
-git checkout -b feature/nome-da-funcionalidade
-
-# Fazer suas alterações...
-git add .
-git commit -m "feat: descrição da funcionalidade"
-git push origin feature/nome-da-funcionalidade
-```
+git clone https://github.com/ferpslva/New-Devops.git
+Fazer um pull na branch develop
+Criar uma nova branch
+Utilizar a IDE VSCode para alterações
+Selecionar os itens alterados e fazer um commit
 
 ### 2. Pull Request para Develop
 
-1. **Abrir PR** no GitHub: `feature/nome` → `develop`
+1. **Abrir PR** no GitHub:
+   - Importante que a PR seja da branch criada para develop
 2. **CI executa automaticamente**:
    - ✅ Instala dependências PHP
    - ✅ Configura banco de dados MySQL
@@ -42,7 +39,6 @@ git push origin feature/nome-da-funcionalidade
 
 ### 3. Merge em Develop
 
-```bash
 # Após aprovação e CI passar
 # Fazer merge do PR no GitHub
 # ⚠️ NENHUM deploy acontece aqui!
@@ -58,8 +54,8 @@ Quando estiver pronto para produção:
 ```
 
 1. **CI valida novamente** (segurança dupla)
-2. **Aguardar aprovação** de reviewer (recomendado)
-3. **Fazer merge** em master
+2. **Aguardar aprovação** de reviewer
+3. **Fazer merge** na branch master
 4. **CD deploy automático** 🚀
    - Sincroniza código para VPS
    - Backup do banco de dados
@@ -155,29 +151,9 @@ Após merge em master:
 ## 🔍 Troubleshooting
 
 ### CI falhou nos testes
-```bash
-# Executar testes localmente
-composer install
-composer require --dev phpunit/phpunit ^10
-vendor/bin/phpunit
-```
-
 ### CI falhou no build Docker
-```bash
-# Testar build localmente
-docker build -t test .
-```
-
 ### CD falhou no deploy
 1. Verificar logs no GitHub Actions
-2. SSH no VPS e verificar:
-```bash
-docker ps
-docker logs mvc_app_web
-docker logs mvc_app_php
-```
-
----
 
 ## 🌐 URLs
 
@@ -192,9 +168,8 @@ docker logs mvc_app_php
 2. ✅ Escrever mensagens de commit descritivas
 3. ✅ Aguardar CI passar antes de merge
 4. ✅ Testar localmente antes de push
-5. ✅ Fazer code review em PRs importantes
-6. ✅ Não fazer push direto em develop ou master
-7. ✅ Usar PRs mesmo para pequenas mudanças
+5. ✅ Não fazer push direto em develop ou master
+6. ✅ Usar PRs mesmo para pequenas mudanças
 
 ---
 
