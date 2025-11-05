@@ -1,0 +1,134 @@
+name: CD - Deploy Production
+
+on:
+  push:
+    branches: 
+      - master
+  workflow_dispatch:
+
+# IMPORTANTE: Este workflow só executa em push para master
+# Garante que nada vai para produção sem passar pelo CI
+
+jobs:
+  deploy:
+    name: Deploy to VPS Production
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔑 Configure SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+    - name: 📋 Sync project files to VPS
+      run: |
+        # Criar diretório temporário excluindo arquivos desnecessários
+        rsync -avz --delete \
+          --exclude='.git' \
+          --exclude='node_modules' \
+          --exclude='vendor' \
+          --exclude='backups' \
+          --exclude='.env' \
+          -e "ssh -i ~/.ssh/deploy_key" \
+          ./ ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/opt/sistema_av_iii/
+
+    - name: 🗄️ Backup MySQL Database
+      run: |
+        ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'EOF'
+          cd /opt/sistema_av_iii
+          mkdir -p backups
+          if docker ps | grep -q mvc_app_db; then
+            BACKUP_FILE="backups/backup_$(date +%Y%m%d_%H%M%S).sql"
+            docker-compose exec -T db mysqldump -uroot -prootpass sistema_av_iii > $BACKUP_FILE
+            echo "✅ Backup created: $BACKUP_FILE"
+            # Keep last 7 backups
+            ls -t backups/backup_*.sql | tail -n +8 | xargs -r rm
+          fi
+        EOF
+
+    - name: 🔨 Build and deploy containers
+      run: |
+        ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'EOF'
+          cd /opt/sistema_av_iii
+
+          echo "🔄 Stopping and removing old containers..."
+          docker-compose down --remove-orphans
+          
+          echo "🧹 Force removing any conflicting containers..."
+          docker rm -f mvc_app_php mvc_app_web mvc_app_db 2>/dev/null || true
+
+          echo "🔄 Building and starting all containers..."
+          docker-compose up -d --build
+
+          echo "📊 Starting monitoring containers (Dozzle)..."
+          docker-compose -f docker-compose.monitoring.yml up -d
+
+          echo ""
+          echo "✅ Quick verification that containers started..."
+          sleep 3
+          
+          # Verificação rápida apenas com docker ps (mais rápido que docker-compose ps)
+          if ! docker ps --filter "name=mvc_app" --format "{{.Names}}" | grep -q "mvc_app"; then
+            echo "❌ Containers failed to start!"
+            echo ""
+            echo "📋 Showing container status:"
+            docker ps -a --filter "name=mvc_app"
+            echo ""
+            echo "📋 Recent logs:"
+            docker-compose logs --tail=50
+            exit 1
+          fi
+          
+          echo "✅ Containers are running!"
+
+          echo "🏥 Health check..."
+          MAX_RETRIES=6
+          RETRY_COUNT=0
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -f http://localhost:8080/ > /dev/null 2>&1; then
+              echo "✅ Health check passed!"
+              exit 0
+            fi
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⏳ Health check attempt $RETRY_COUNT/$MAX_RETRIES failed, retrying in 3s..."
+            sleep 3
+          done
+
+          echo "❌ Health check failed!"
+          echo "📋 Container status:"
+          docker-compose ps
+          echo "📋 Application logs:"
+          docker-compose logs app
+          echo "📋 Nginx logs:"
+          docker-compose logs web
+          exit 1
+        EOF
+
+    - name: 🧹 Cleanup SSH key
+      if: always()
+      run: rm -f ~/.ssh/deploy_key
+
+    - name: ✅ Deployment Success
+      if: success()
+      run: |
+        echo "🎉 =================================="
+        echo "🎉 DEPLOYMENT SUCCESSFUL!"
+        echo "🎉 =================================="
+        echo "✅ Application deployed to: ${{ secrets.VPS_HOST }}"
+        echo "✅ Branch: ${{ github.ref_name }}"
+        echo "🔗 Access your application at: http://${{ secrets.VPS_HOST }}:8080"
+
+    - name: ❌ Deployment Failed
+      if: failure()
+      run: |
+        echo "❌ =================================="
+        echo "❌ DEPLOYMENT FAILED!"
+        echo "❌ =================================="
+        echo "Check the logs above for details and manually inspect the VPS if necessary."
