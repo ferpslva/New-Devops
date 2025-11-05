@@ -3,7 +3,7 @@
 <article>
   <header class="grid">
     <h2><?= htmlspecialchars($title ?? 'Categorias') ?></h2>
-    <a href="/categorias/criar" role="button">Nova Categoria</a>
+    <a href="/categorias/criar" role="button">Criar nova Categoria</a>
   </header>
 
   <?php if (!empty($categorias)): ?>
