@@ -3,7 +3,7 @@
 <article>
     <header style="display: flex; justify-content: space-between; align-items: center;">
         <h2><?= htmlspecialchars($title) ?></h2>
-        <a href="/produtos/criar" role="button">Novo Produto</a>
+        <a href="/produtos/criar" role="button">Criar Novo Produto</a>
     </header>
 
     <ul>
